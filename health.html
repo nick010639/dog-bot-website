@@ -239,10 +239,11 @@
             updateWater();
         }
 
-        // Timer Logic
-        let timeLeft = 40 * 60; // 40 minutes in seconds
+        // Timer Logic - TIMESTAMP-BASED (Mobile-proof!)
+        let startTime = null;
         let timerId = null;
         let isRunning = false;
+        const DURATION = 40 * 60; // 40 minutes in seconds
         const timerDisplay = document.getElementById('timer');
         const timerBox = document.getElementById('timer-box');
         const statusText = document.getElementById('status-text');
@@ -260,19 +261,22 @@
                 Notification.requestPermission();
             }
 
-            // Pre-load audio to fix mobile issues
+            // Pre-load audio
             const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
             audio.load();
 
             isRunning = true;
+            startTime = Date.now();
             document.getElementById('start-btn').style.display = 'none';
-            statusText.textContent = "专注中... 保持坐姿，40分钟后叫你！";
+            statusText.textContent = "专注中... 40分钟后提醒你！";
             
+            // Timestamp-based update - mobile-proof!
             timerId = setInterval(() => {
-                timeLeft--;
-                timerDisplay.textContent = formatTime(timeLeft);
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const remaining = Math.max(0, DURATION - elapsed);
+                timerDisplay.textContent = formatTime(remaining);
                 
-                if (timeLeft <= 0) {
+                if (remaining <= 0) {
                     clearInterval(timerId);
                     timesUp(audio);
                 }
@@ -282,12 +286,11 @@
         function resetTimer() {
             clearInterval(timerId);
             isRunning = false;
-            timeLeft = 40 * 60;
+            startTime = null;
             timerDisplay.textContent = "40:00";
             document.getElementById('start-btn').style.display = 'inline-block';
             timerBox.classList.remove('move-now');
             statusText.textContent = "点击开始，40分钟后提醒运动";
-            // Stop sound if playing? (Browser policy limits this)
         }
 
         function timesUp(audio) {
@@ -304,7 +307,7 @@
                 });
             }
             
-            // Audio Alert - use the pre-loaded audio
+            // Audio Alert
             if (audio) {
                 audio.play().catch(e => console.log('Audio play failed', e));
             }
