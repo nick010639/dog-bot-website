@@ -11,6 +11,7 @@
             --text: #064e3b;
             --water: #3b82f6;
             --alert: #ef4444;
+            --timer-duration: 2400s; /* 40 minutes */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -55,13 +56,15 @@
         }
         .done { text-decoration: line-through; opacity: 0.6; }
 
-        /* Timer */
+        /* Timer - CSS Animation */
         .timer-box {
             text-align: center;
             padding: 20px;
             background: #ecfdf5;
             border-radius: 12px;
             border: 2px solid var(--primary);
+            position: relative;
+            overflow: hidden;
         }
         .time-display {
             font-size: 3rem;
@@ -112,7 +115,7 @@
             transition: width 0.3s ease;
         }
         
-        /* Animation for movement */
+        /* Animation for movement - Mobile-proof! */
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -122,6 +125,29 @@
             animation: pulse 1s infinite;
             background-color: #fee2e2;
             border-color: var(--alert);
+        }
+
+        /* CSS-based Timer Ring */
+        .timer-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) var(--progress, 0%), transparent var(--progress, 0%));
+            opacity: 0.1;
+            z-index: 0;
+            pointer-events: none;
+            transition: background 1s linear;
+        }
+        
+        .timer-running .timer-ring {
+            animation: progress var(--timer-duration) linear forwards;
+        }
+        
+        @keyframes progress {
+            from { --progress: 0%; }
+            to { --progress: 100%; }
         }
     </style>
 </head>
@@ -184,11 +210,14 @@
     <div class="card">
         <div class="section-title">🏃‍♂️ 久坐提醒</div>
         <div class="timer-box" id="timer-box">
-            <div>已坐时长</div>
-            <div class="time-display" id="timer">40:00</div>
-            <button class="btn" onclick="startTimer()" id="start-btn">开始专注</button>
-            <button class="btn btn-reset" onclick="resetTimer()">重置</button>
-            <p id="status-text" style="font-size: 0.9rem; margin-top: 10px; color: #666;">点击开始，40分钟后提醒运动</p>
+            <div class="timer-ring" id="timer-ring"></div>
+            <div style="position: relative; z-index: 1;">
+                <div>已坐时长</div>
+                <div class="time-display" id="timer">40:00</div>
+                <button class="btn" onclick="startTimer()" id="start-btn">开始专注</button>
+                <button class="btn btn-reset" onclick="resetTimer()">重置</button>
+                <p id="status-text" style="font-size: 0.9rem; margin-top: 10px; color: #666;">点击开始，40分钟后提醒运动</p>
+            </div>
         </div>
     </div>
 
@@ -239,18 +268,20 @@
             updateWater();
         }
 
-        // Timer Logic - TIMESTAMP-BASED (Mobile-proof!)
+        // Timer Logic - Hybrid: CSS Animation + Timestamp Verification
         let startTime = null;
-        let timerId = null;
+        let checkTimerId = null;
         let isRunning = false;
-        const DURATION = 40 * 60; // 40 minutes in seconds
+        const DURATION = 40 * 60 * 1000; // 40 minutes in milliseconds
         const timerDisplay = document.getElementById('timer');
         const timerBox = document.getElementById('timer-box');
         const statusText = document.getElementById('status-text');
+        const timerRing = document.getElementById('timer-ring');
 
-        function formatTime(seconds) {
-            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const s = (totalSeconds % 60).toString().padStart(2, '0');
             return `${m}:${s}`;
         }
 
@@ -270,30 +301,39 @@
             document.getElementById('start-btn').style.display = 'none';
             statusText.textContent = "专注中... 40分钟后提醒你！";
             
-            // Timestamp-based update - mobile-proof!
-            timerId = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            // Start CSS animation (mobile-proof)
+            timerBox.classList.add('timer-running');
+            
+            // JS checks every 10 seconds to trigger alert (CSS handles the visual)
+            checkTimerId = setInterval(() => {
+                const elapsed = Date.now() - startTime;
                 const remaining = Math.max(0, DURATION - elapsed);
                 timerDisplay.textContent = formatTime(remaining);
                 
                 if (remaining <= 0) {
-                    clearInterval(timerId);
+                    clearInterval(checkTimerId);
                     timesUp(audio);
                 }
-            }, 1000);
+            }, 10000); // Check every 10s instead of 1s to save battery
         }
 
         function resetTimer() {
-            clearInterval(timerId);
+            clearInterval(checkTimerId);
             isRunning = false;
             startTime = null;
             timerDisplay.textContent = "40:00";
             document.getElementById('start-btn').style.display = 'inline-block';
-            timerBox.classList.remove('move-now');
+            timerBox.classList.remove('timer-running', 'move-now');
             statusText.textContent = "点击开始，40分钟后提醒运动";
+            
+            // Reset CSS animation
+            timerRing.style.animation = 'none';
+            timerRing.offsetHeight; // Trigger reflow
+            timerRing.style.animation = '';
         }
 
         function timesUp(audio) {
+            timerBox.classList.remove('timer-running');
             timerBox.classList.add('move-now');
             statusText.textContent = "🚨 时间到！起来走动 2 分钟！🚨";
             statusText.style.color = "#ef4444";
