@@ -199,9 +199,6 @@
             <div class="badge">🚫 少汤汁</div>
             <div class="badge">🚫 少蘸酱</div>
         </div>
-        <p style="text-align: center; margin-top: 15px; font-size: 0.9rem;">
-            清淡饮食，健康长寿！🐶
-        </p>
     </div>
 
     <script>
@@ -263,6 +260,10 @@
                 Notification.requestPermission();
             }
 
+            // Pre-load audio to fix mobile issues
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            audio.load();
+
             isRunning = true;
             document.getElementById('start-btn').style.display = 'none';
             statusText.textContent = "专注中... 保持坐姿，40分钟后叫你！";
@@ -273,7 +274,7 @@
                 
                 if (timeLeft <= 0) {
                     clearInterval(timerId);
-                    timesUp();
+                    timesUp(audio);
                 }
             }, 1000);
         }
@@ -289,7 +290,7 @@
             // Stop sound if playing? (Browser policy limits this)
         }
 
-        function timesUp() {
+        function timesUp(audio) {
             timerBox.classList.add('move-now');
             statusText.textContent = "🚨 时间到！起来走动 2 分钟！🚨";
             statusText.style.color = "#ef4444";
@@ -303,9 +304,10 @@
                 });
             }
             
-            // Audio Alert
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-            audio.play().catch(e => console.log('Audio play failed', e));
+            // Audio Alert - use the pre-loaded audio
+            if (audio) {
+                audio.play().catch(e => console.log('Audio play failed', e));
+            }
         }
     </script>
 </body>
