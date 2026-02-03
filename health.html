@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zack's Daily Health Check 🌿</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --bg: #f0fdf4;
+            --text: #064e3b;
+            --water: #3b82f6;
+            --alert: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 { text-align: center; color: var(--primary); }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Water Checklist */
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-item:hover { background-color: #f9fafb; }
+        .checklist-item input {
+            transform: scale(1.5);
+            margin-right: 15px;
+            accent-color: var(--water);
+        }
+        .done { text-decoration: line-through; opacity: 0.6; }
+
+        /* Timer */
+        .timer-box {
+            text-align: center;
+            padding: 20px;
+            background: #ecfdf5;
+            border-radius: 12px;
+            border: 2px solid var(--primary);
+        }
+        .time-display {
+            font-size: 3rem;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            margin: 10px 0;
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-reset { background: #6b7280; }
+
+        /* Diet Badge */
+        .diet-badges {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .badge {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            border: 1px solid #fecaca;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--water);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        /* Animation for movement */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .move-now {
+            animation: pulse 1s infinite;
+            background-color: #fee2e2;
+            border-color: var(--alert);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>💪 每日健康检查</h1>
+
+    <!-- Progress -->
+    <div class="card">
+        <div>今日喝水进度: <span id="water-percent">0%</span></div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- Water Section -->
+    <div class="card">
+        <div class="section-title">💧 喝水 (目标 2L)</div>
+        <label class="checklist-item">
+            <input type="checkbox" onchange="updateWater()" data-ml="500">
+            <span>起床 (500ml)</span>
+        </label>
+        <label class="checklist-item">
+            <input type="checkbox" onchange="updateWater()" data-ml="500">
+            <span>上午 (500ml)</span>
+        </label>
+        <label class="checklist-item">
+            <input type="checkbox" onchange="updateWater()" data-ml="500">
+            <span>下午 (500ml)</span>
+        </label>
+        <label class="checklist-item">
+            <input type="checkbox" onchange="updateWater()" data-ml="500">
+            <span>晚饭前 (500ml)</span>
+        </label>
+    </div>
+
+    <!-- Exercise Section -->
+    <div class="card">
+        <div class="section-title">🏃‍♂️ 久坐提醒</div>
+        <div class="timer-box" id="timer-box">
+            <div>已坐时长</div>
+            <div class="time-display" id="timer">40:00</div>
+            <button class="btn" onclick="startTimer()" id="start-btn">开始专注</button>
+            <button class="btn btn-reset" onclick="resetTimer()">重置</button>
+            <p id="status-text" style="font-size: 0.9rem; margin-top: 10px; color: #666;">点击开始，40分钟后提醒运动</p>
+        </div>
+    </div>
+
+    <!-- Diet Section -->
+    <div class="card">
+        <div class="section-title">🥗 饮食原则</div>
+        <div class="diet-badges">
+            <div class="badge">🚫 少汤汁</div>
+            <div class="badge">🚫 少蘸酱</div>
+        </div>
+        <p style="text-align: center; margin-top: 15px; font-size: 0.9rem;">
+            清淡饮食，健康长寿！🐶
+        </p>
+    </div>
+
+    <script>
+        // Water Logic
+        function updateWater() {
+            const checks = document.querySelectorAll('input[type="checkbox"]');
+            let total = 0;
+            let count = 0;
+            checks.forEach(c => {
+                if(c.checked) {
+                    total += parseInt(c.dataset.ml);
+                    count++;
+                    c.nextElementSibling.classList.add('done');
+                } else {
+                    c.nextElementSibling.classList.remove('done');
+                }
+            });
+            
+            const percent = (total / 2000) * 100;
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('water-percent').textContent = percent + '%';
+            
+            // Save state
+            const state = Array.from(checks).map(c => c.checked);
+            localStorage.setItem('waterState', JSON.stringify({
+                date: new Date().toDateString(),
+                checks: state
+            }));
+        }
+
+        // Load Water State
+        const saved = JSON.parse(localStorage.getItem('waterState'));
+        if (saved && saved.date === new Date().toDateString()) {
+            const checks = document.querySelectorAll('input[type="checkbox"]');
+            saved.checks.forEach((checked, i) => {
+                if(checks[i]) checks[i].checked = checked;
+            });
+            updateWater();
+        }
+
+        // Timer Logic
+        let timeLeft = 40 * 60; // 40 minutes in seconds
+        let timerId = null;
+        let isRunning = false;
+        const timerDisplay = document.getElementById('timer');
+        const timerBox = document.getElementById('timer-box');
+        const statusText = document.getElementById('status-text');
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            
+            if (Notification.permission !== "granted") {
+                Notification.requestPermission();
+            }
+
+            isRunning = true;
+            document.getElementById('start-btn').style.display = 'none';
+            statusText.textContent = "专注中... 保持坐姿，40分钟后叫你！";
+            
+            timerId = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = formatTime(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    timesUp();
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            timeLeft = 40 * 60;
+            timerDisplay.textContent = "40:00";
+            document.getElementById('start-btn').style.display = 'inline-block';
+            timerBox.classList.remove('move-now');
+            statusText.textContent = "点击开始，40分钟后提醒运动";
+            // Stop sound if playing? (Browser policy limits this)
+        }
+
+        function timesUp() {
+            timerBox.classList.add('move-now');
+            statusText.textContent = "🚨 时间到！起来走动 2 分钟！🚨";
+            statusText.style.color = "#ef4444";
+            statusText.style.fontWeight = "bold";
+            
+            // Native Notification
+            if (Notification.permission === "granted") {
+                new Notification("该动动了！🐶", {
+                    body: "已经坐了40分钟啦，起来走两步！",
+                    icon: "https://nick010639.github.io/dog-bot-website/favicon.ico"
+                });
+            }
+            
+            // Audio Alert
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            audio.play().catch(e => console.log('Audio play failed', e));
+        }
+    </script>
+</body>
+</html>
