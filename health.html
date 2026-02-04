@@ -272,6 +272,7 @@
         let startTime = null;
         let checkTimerId = null;
         let isRunning = false;
+        let audio = null; // Global audio object
         const DURATION = 40 * 60 * 1000; // 40 minutes in milliseconds
         const timerDisplay = document.getElementById('timer');
         const timerBox = document.getElementById('timer-box');
@@ -293,7 +294,9 @@
             }
 
             // Pre-load audio
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            if (!audio) {
+                audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            }
             audio.load();
 
             isRunning = true;
@@ -304,18 +307,32 @@
             // Start CSS animation (mobile-proof)
             timerBox.classList.add('timer-running');
             
-            // JS checks every 10 seconds to trigger alert (CSS handles the visual)
-            checkTimerId = setInterval(() => {
-                const elapsed = Date.now() - startTime;
-                const remaining = Math.max(0, DURATION - elapsed);
-                timerDisplay.textContent = formatTime(remaining);
-                
-                if (remaining <= 0) {
-                    clearInterval(checkTimerId);
-                    timesUp(audio);
-                }
-            }, 10000); // Check every 10s instead of 1s to save battery
+            // JS checks every 1 second to update display
+            checkTimerId = setInterval(updateTimerDisplay, 1000);
+            
+            // Also update immediately
+            updateTimerDisplay();
         }
+
+        function updateTimerDisplay() {
+            if (!startTime || !isRunning) return;
+            
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, DURATION - elapsed);
+            timerDisplay.textContent = formatTime(remaining);
+            
+            if (remaining <= 0) {
+                clearInterval(checkTimerId);
+                timesUp();
+            }
+        }
+
+        // Handle visibility change (user comes back to tab/unlocks phone)
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible" && isRunning) {
+                updateTimerDisplay();
+            }
+        });
 
         function resetTimer() {
             clearInterval(checkTimerId);
@@ -332,7 +349,7 @@
             timerRing.style.animation = '';
         }
 
-        function timesUp(audio) {
+        function timesUp() {
             timerBox.classList.remove('timer-running');
             timerBox.classList.add('move-now');
             statusText.textContent = "🚨 时间到！起来走动 2 分钟！🚨";
